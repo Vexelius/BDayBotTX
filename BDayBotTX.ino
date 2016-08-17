@@ -1,8 +1,11 @@
 
-// include the library code:
+#include <SPI.h>
+#include "RF24.h"
+#include <printf.h>
 #include <LiquidCrystal.h>
 #include <OnewireKeypad.h>
 
+// Keypad configuration
 #define Rows 2
 #define Cols 5
 #define Pin A0
@@ -13,35 +16,103 @@ char KEYS[]= {
   'U','R','D','L','S',
   'C','B','A','M','Z',
 };
+// Key codes:
+// U: Up, D: Down, R: Right, L: Left
+// S: Select Mode + || Z: Select Mode -
+// Action buttons: A, B, C
+// M: Play Melody
 
-// initialize the library with the numbers of the interface pins
+// Initialize the LCD library with the numbers of the interface pins
 LiquidCrystal lcd(9, 6, 5, 4, 3, 2);
 
+// Initialize the Keypad library
 OnewireKeypad <LiquidCrystal, 10 > Keypad(lcd, KEYS, Rows, Cols, Pin, Row_Res, Col_Res);
+
+// Set up the NRF24L01
+RF24 radio(7,8);
+
+byte addresses[][6] = {"1Node", "2Node"}; // Create the pipes
+unsigned long timeNow;  // Grabs the current time, used to calculate delays
+unsigned long started_waiting_at;
+boolean timeout;       // Timeout flag
+
+struct dataStruct {
+  unsigned long timeCounter;  // Save response times
+  char keyPress;
+  bool btnMelody;          // M Button
+} myData;                 // Data stream that will be sent to the robot
 
 void setup() {
   Serial.begin(57600);
-  // set up the LCD's number of columns and rows:
+  // Set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   // Print a message to the LCD.
-  lcd.print("Key matrix test");
+  lcd.print("TX Test");
+
+  printf_begin(); // Needed for "printDetails" Takes up some memory
+
+  radio.begin();  //Initialize NRF24L01
+  radio.setDataRate(RF24_250KBPS);  //Data rate is slow, but ensures accuracy
+  radio.setPALevel(RF24_PA_HIGH);   //High PA Level, to give enough range
+  radio.setCRCLength(RF24_CRC_16);  //CRC at 16 bits
+  radio.setRetries(15,15);          //Max number of retries
+  radio.setPayloadSize(8);          //Payload size of 8bits
+
+  // Open a writing and reading pipe on each radio, with opposite addresses
+  radio.openWritingPipe(addresses[0]);
+  radio.openReadingPipe(1, addresses[1]);
+
+  // Start the radio listening for data
+  radio.startListening();
 }
 
 void loop() {
-  // Turn off the blinking cursor:
-  //lcd.noBlink();
-  //delay(3000);
-  // Turn on the blinking cursor:
-  //lcd.blink();
-  //delay(3000);
-  
-    if(Keypad.Getkey() )
+  radio.stopListening();
+  myData.keyPress = Keypad.Getkey();
+
+  myData.timeCounter = micros();  // Send back for timing
+
+  Serial.print(F("Now sending  -  "));
+
+  if (!radio.write( &myData, sizeof(myData) )) {            // Send data, checking for error ("!" means NOT)
+    Serial.println(F("Transmit failed "));
+  }
+
+  radio.startListening();                                    // Now, continue listening
+
+  started_waiting_at = micros();               // timeout period, get the current microseconds
+  timeout = false;                            //  variable to indicate if a response was received or not
+
+  while ( ! radio.available() ) {                            // While nothing is received
+    if (micros() - started_waiting_at > 200000 ) {           // If waited longer than 200ms, indicate timeout and exit while loop
+      timeout = true;
+      break;
+    }
+  }
+
+  if ( timeout )
+  { // Describe the results
+    Serial.println(F("Response timed out -  no Acknowledge."));
+  }
+  else
   {
-    lcd.clear();
-    lcd.print("Key press: ");
-    lcd.print(Keypad.Getkey());
-    delay(250);
-  } 
+    // Grab the response, compare, and send to Serial Monitor
+    radio.read( &myData, sizeof(myData) );
+    timeNow = micros();
+
+    // Show it
+    Serial.print(F("Sent "));
+    Serial.print(timeNow);
+    Serial.print(F(", Got response "));
+    Serial.print(myData.timeCounter);
+    Serial.print(F(", Round-trip delay "));
+    Serial.print(timeNow - myData.timeCounter);
+    Serial.println(F(" microseconds "));
+
+  }
+
+  // Send again after delay. When working OK, change to something like 100
+  delay(100);
 }
 
 
