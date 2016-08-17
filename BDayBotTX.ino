@@ -67,6 +67,8 @@ void setup() {
 }
 
 void loop() {
+  if(Keypad.Getkey())
+  {
   radio.stopListening();
   myData.keyPress = Keypad.Getkey();
 
@@ -112,7 +114,8 @@ void loop() {
   }
 
   // Send again after delay. When working OK, change to something like 100
-  delay(100);
+  delay(200);
+  }
 }
 
 
