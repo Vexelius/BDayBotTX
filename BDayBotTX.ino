@@ -35,11 +35,16 @@ byte addresses[][6] = {"1Node", "2Node"}; // Create the pipes
 unsigned long timeNow;  // Grabs the current time, used to calculate delays
 unsigned long started_waiting_at;
 boolean timeout;       // Timeout flag
+boolean transmitData; // Enable the transmitter and send data
+boolean lcdRefresh;    // Controls the LCD's refresh rate
+int robotMode;  // Sets up the operation mode
+// 1: Expression Mode   3: Greeting Mode
+// 2: Candle Mode       4: Config Mode
 
 struct dataStruct {
   unsigned long timeCounter;  // Save response times
   char keyPress;
-  bool btnMelody;          // M Button
+  boolean keypadLock;          // M Button
 } myData;                 // Data stream that will be sent to the robot
 
 void setup() {
@@ -48,6 +53,9 @@ void setup() {
   lcd.begin(16, 2);
   // Print a message to the LCD.
   lcd.print("TX Test");
+
+  robotMode = 1;
+  lcdRefresh = true;
 
   printf_begin(); // Needed for "printDetails" Takes up some memory
 
@@ -69,9 +77,52 @@ void setup() {
 void loop() {
   if(Keypad.Getkey())
   {
-  radio.stopListening();
   myData.keyPress = Keypad.Getkey();
+  Serial.print(F("Key pressed "));
+  Serial.println(myData.keyPress);
+  
+  if(myData.keyPress=='S')
+  {
+    robotMode -= 1;
+    if(robotMode<1) robotMode = 3;
+    delay(200);
+    lcdRefresh = true;
+  }
+  
+  if(myData.keyPress=='Z')
+  {
+    robotMode += 1;
+    if(robotMode>3) robotMode = 1;
+    delay(200);
+    lcdRefresh = true;
+  }
 
+  if(lcdRefresh==true)
+  {
+  Serial.print("Current Mode: ");
+  Serial.println(robotMode);
+  lcdRefresh = false;
+  }
+  
+  if((robotMode==1)
+  &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+  || myData.keyPress=='M' || myData.keyPress=='B'))
+  transmitData = true;
+
+  if((robotMode==2)
+  &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+  || myData.keyPress=='M' || myData.keyPress=='A' || myData.keyPress=='B' || myData.keyPress=='C'))
+  transmitData = true;
+
+  if((robotMode==3)
+  &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+  || myData.keyPress=='B'))
+  transmitData = true;
+  
+    
+  if(transmitData==true) // Turn on the transmitter only when there's a key press
+  {
+  radio.stopListening();
   myData.timeCounter = micros();  // Send back for timing
 
   Serial.print(F("Now sending  -  "));
@@ -114,6 +165,9 @@ void loop() {
   }
 
   // Send again after delay. When working OK, change to something like 100
+  transmitData = false;
+  delay(200);
+  }
   delay(200);
   }
 }
