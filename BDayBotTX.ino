@@ -39,13 +39,16 @@ boolean transmitData; // Enable the transmitter and send data
 boolean lcdRefresh;    // Controls the LCD's refresh rate
 int robotMode;  // Sets up the operation mode
 // 1: Expression Mode   3: Greeting Mode
-// 2: Candle Mode
+// 2: Candle Mode       5: Config Mode
+int dizzyCounterL;
+int dizzyCounterR;
 
 struct dataStruct {
   unsigned long timeCounter;  // Save response times
   char keyPress;          // When a key is pressed, this variable stores its unique code
   boolean keypadLock;     // When this flag is active, no input will be received fron the keypad
   boolean configMode;     // This flag determines wheter the robot is in Config Mode or not
+  boolean statusDizzy;
 } myData;                 // Data stream that will be sent to the robot
 
 void setup() {
@@ -59,6 +62,11 @@ void setup() {
 
   robotMode = 1;
   lcdRefresh = true;
+  myData.configMode = false;
+  myData.statusDizzy = false;
+  Keypad.SetHoldTime(800);
+  dizzyCounterL = 0;
+  dizzyCounterR = 0;
 
   printf_begin(); // Needed for "printDetails" Takes up some memory
 
@@ -78,50 +86,112 @@ void setup() {
 }
 
 void loop() {
-  if(lcdRefresh==true)
+  if(lcdRefresh==true)  // Update the screen when needed
   screenDraw();
   
   
-  if(Keypad.Getkey())   // Only start the process when a key is pressed
+  if(Keypad.Getkey())   // Look for key input
   {
   myData.keyPress = Keypad.Getkey();  // Store the key code
 
-  // Keys to change the robot's operation mode: S and Z
+  // Keys to change the robot's Operation Mode: S and Z
+  
+if(myData.configMode==false)     // Outside of Config Mode, these keys cycle
+{                                // through the three main Modes
+  
   if(myData.keyPress=='S')  // S Key: Select Mode -
   {
     robotMode -= 1;
-    
     // If you press the key when you're on the first of three modes available
     // loop back to the third mode
     if(robotMode<1) robotMode = 3;
-    lcdRefresh = true;  //Refresh the LCD screen's content
+    screenDraw();  //Refresh the LCD screen's content
+    delay(200);
   }
   
-  if(myData.keyPress=='Z')  // Z Key: Select Mode +
+  if((myData.keyPress=='Z')&&(Keypad.Key_State()!=3))  // Z Key: Select Mode +
   {
     robotMode += 1;
-    
     // If you press the key when you're on the third of three modes available
     // loop back to the first mode
     if(robotMode>3) robotMode = 1;
-    lcdRefresh = true;  //Refresh the LCD screen's content
+    screenDraw();  //Refresh the LCD screen's content
+    delay(100);
   }
 
+  if((myData.keyPress=='Z')&&(Keypad.Key_State()==3))  // Hold Z Key: Enter Config Mode
+  {
+    robotMode = 5;
+    myData.configMode = true;
+    screenDraw();  //Refresh the LCD screen's content
+    transmitData = true;
+  }
+}
+else    // To exit Config Mode, press and hold the S Key
+{
+  if((myData.keyPress=='S')&&(Keypad.Key_State()==3))  // Hold S Key: Exit Config Mode
+  {
+    robotMode = 1;
+    myData.configMode = false;
+    screenDraw();  //Refresh the LCD screen's content
+    transmitData = true;
+    delay(200);
+  }
+}
+
+
+  //Main Controls
+  // The following instructions ensure that the proper commands are sent
+  // when the Robot is in a specific Operation Mode
   
-  if((robotMode==1)
+  if((robotMode==1) // Expression Mode
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='B'))
   transmitData = true;
+  // In this mode, the Robot can move in all directions (U,D,L,R)
+  // change expressions (B) and play music (M)
 
-  if((robotMode==2)
+  if((robotMode==2) // Candle Mode
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='A' || myData.keyPress=='B' || myData.keyPress=='C'))
   transmitData = true;
+  // In this mode, the Robot can move in all directions (U,D,L,R)
+  // turn on and off its candles (A,B,C) and play music (M)
 
   if((robotMode==3)
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='B'))
   transmitData = true;
+  // In this mode, the Robot can move in all directions (U,D,L,R)
+  // and play different greetings (B)
+
+
+  //Dizziness
+  // When the Robot spins too much in one direction
+  // it becomes Dizzy for a while
+  if(myData.keyPress=='L')
+    dizzyCounterL += 1;     // This counter keeps track of how much the Robot spins
+    else                    // to the left
+      dizzyCounterL = 0;    // If another key is pressed, the counter resets
+  if(myData.keyPress=='R')
+    dizzyCounterR += 1;     // This counter keeps track of how much the Robot spins
+    else                    // to the right
+      dizzyCounterR = 0;    // If another key is pressed, the counter resets
+
+  // After the Robot has spin over this threshold...
+  if((dizzyCounterL >= 5)||(dizzyCounterR >= 5))
+  {
+    myData.statusDizzy = true;  //... He becomes Dizzy
+    sendData();
+    delay(5000);    // He won't obey commands for a while
+    // Afterwards, he'll recover and his counters will be reset
+    myData.statusDizzy = false;
+    dizzyCounterL = 0;
+    dizzyCounterR = 0;
+    sendData();
+    delay(300);   // Delay to ensure that no key input is accepted for a moment after he recovers
+                  // allowing him to end the Dizzy event
+  }
   
     
   if(transmitData==true) // Turn on the transmitter only when there's a key press
@@ -148,10 +218,16 @@ void screenDraw() {
   {
     lcd.print("Greeting Mode");
   }
+  if(robotMode==5)
+  {
+    lcd.print("Config Mode");
+  }
   
   lcdRefresh = false;
 }
 
+
+// This function controls the NRF24l01, to send commands and data to the Robot
 void sendData() {
   radio.stopListening();
   myData.timeCounter = micros();  // Send back for timing
@@ -197,6 +273,7 @@ void sendData() {
 
   // Send again after delay. When working OK, change to something like 100
   transmitData = false;
-  delay(200);
+  delay(100); // Changing this value also changes the "feeling" when you press the button. 
+              // Less time = More fluid reaction
 }
 
