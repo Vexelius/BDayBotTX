@@ -36,6 +36,7 @@ unsigned long timeNow;  // Grabs the current time, used to calculate delays
 unsigned long started_waiting_at;
 boolean timeout;       // Timeout flag
 boolean transmitData; // Enable the transmitter and send data
+
 boolean lcdRefresh;    // Controls the LCD's refresh rate
 int robotMode;  // Sets up the operation mode
 // 1: Expression Mode   3: Greeting Mode
@@ -81,7 +82,7 @@ void setup() {
   radio.openWritingPipe(addresses[0]);
   radio.openReadingPipe(1, addresses[1]);
 
-  // Start the radio listening for data
+  // Start listening for data
   radio.startListening();
 }
 
