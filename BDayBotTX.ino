@@ -126,6 +126,33 @@ void loop() {
     
   if(transmitData==true) // Turn on the transmitter only when there's a key press
   {
+    sendData();
+  }
+  delay(200); // This allows for the key to debounce. Without it, there's a chance that a wrong keycode will be sent
+  }
+}
+
+
+void screenDraw() {
+  lcd.clear();
+
+  if(robotMode==1)
+  {
+    lcd.print("Expression Mode");
+  }
+  if(robotMode==2)
+  {
+    lcd.print("Candle Mode");
+  }
+  if(robotMode==3)
+  {
+    lcd.print("Greeting Mode");
+  }
+  
+  lcdRefresh = false;
+}
+
+void sendData() {
   radio.stopListening();
   myData.timeCounter = micros();  // Send back for timing
 
@@ -171,28 +198,5 @@ void loop() {
   // Send again after delay. When working OK, change to something like 100
   transmitData = false;
   delay(200);
-  }
-  delay(200); // This allows for the key to debounce. Without it, there's a chance that a wrong keycode will be sent
-  }
-}
-
-
-void screenDraw() {
-  lcd.clear();
-
-  if(robotMode==1)
-  {
-    lcd.print("Expression Mode");
-  }
-  if(robotMode==2)
-  {
-    lcd.print("Candle Mode");
-  }
-  if(robotMode==3)
-  {
-    lcd.print("Greeting Mode");
-  }
-  
-  lcdRefresh = false;
 }
 
