@@ -47,6 +47,7 @@ int dizzyCounterR;
 struct dataStruct {
   unsigned long timeCounter;  // Save response times
   char keyPress;          // When a key is pressed, this variable stores its unique code
+  int keyState;
   boolean keypadLock;     // When this flag is active, no input will be received fron the keypad
   boolean configMode;     // This flag determines wheter the robot is in Config Mode or not
   boolean statusDizzy;
@@ -94,6 +95,7 @@ void loop() {
   if(Keypad.Getkey())   // Look for key input
   {
   myData.keyPress = Keypad.Getkey();  // Store the key code
+  myData.keyState = Keypad.Key_State();
 
   // Keys to change the robot's Operation Mode: S and Z
   
@@ -200,6 +202,11 @@ else    // To exit Config Mode, press and hold the S Key
     sendData();
   }
   delay(200); // This allows for the key to debounce. Without it, there's a chance that a wrong keycode will be sent
+  if(Keypad.Key_State()==2) // In the meantime, has the button been released?
+  {
+    myData.keyState=2;  // If so, update the keyState variable
+    sendData();         // and tell the robot about the change
+  }
   }
 }
 
@@ -263,7 +270,8 @@ void sendData() {
 
     // Show it
     Serial.print(F("Sent "));
-    Serial.print(timeNow);
+    Serial.print(myData.keyPress);
+    Serial.print(myData.keyState);
     Serial.print(F(", Got response "));
     Serial.print(myData.timeCounter);
     Serial.print(F(", Round-trip delay "));
