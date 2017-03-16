@@ -186,6 +186,7 @@ else    // To exit Config Mode, press and hold the S Key
   {
     myData.statusDizzy = true;  //... He becomes Dizzy
     sendData();
+    Serial.println("I am feeling dizzy...@_@");
     delay(5000);    // He won't obey commands for a while
     // Afterwards, he'll recover and his counters will be reset
     myData.statusDizzy = false;
