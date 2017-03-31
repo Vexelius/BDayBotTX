@@ -67,7 +67,9 @@ struct dataStruct {
   boolean configMode;     // This flag determines wheter the robot is in Config Mode or not
   boolean statusDizzy;
   int expression;         // Used to change the robot's expressions
-  char greeting[35] = "Arduino";        // 
+  boolean candleA;        // Sets the status for the first Candle
+  boolean candleB;        // Sets the status for the second Candle
+  boolean candleC;        // Sets the status for the third Candle
 } myData;                 // Data stream that will be sent to the robot
 
 void setup() {
@@ -88,14 +90,19 @@ void setup() {
   timeoutCounter = 0;
   statusConnect = true;
 
+  myData.candleA = false; 
+  myData.candleB = false;
+  myData.candleC = false;
+
   printf_begin(); // Needed for "printDetails" Takes up some memory
 
   radio.begin();  //Initialize NRF24L01
   radio.setDataRate(RF24_250KBPS);  //Data rate is slow, but ensures accuracy
   radio.setPALevel(RF24_PA_HIGH);   //High PA Level, to give enough range
   radio.setCRCLength(RF24_CRC_16);  //CRC at 16 bits
-  radio.setRetries(15,1);          //Max number of retries
+  radio.setRetries(15,15);          //Max number of retries
   radio.setPayloadSize(32);          //Payload size of 32bits
+  radio.setChannel(108);
 
   // Open a writing and reading pipe on each radio, with opposite addresses
   radio.openWritingPipe(addresses[0]);
@@ -172,6 +179,8 @@ else    // To exit Config Mode, press and hold the S Key
   {                   //The valid keys to start transmission in this mode are:
   if((myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='B'))
+  // In this mode, the Robot can move in all directions (U,D,L,R)
+  // change expressions (B) and play music (M)
     {
       if(myData.keyPress=='B')
       {
@@ -183,6 +192,8 @@ else    // To exit Config Mode, press and hold the S Key
       }
     transmitData = true;
     }
+  // The following keys aren't transmitted, as they are using to change the data
+  // that will be sent
   if(myData.keyPress=='A')
     {
       expressionIndex -= 1;
@@ -200,27 +211,39 @@ else    // To exit Config Mode, press and hold the S Key
   }
   
 
-  // In this mode, the Robot can move in all directions (U,D,L,R)
-  // change expressions (B) and play music (M)
-
-  if((robotMode==2) // Candle Mode
-  &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
-  || myData.keyPress=='M' || myData.keyPress=='A' || myData.keyPress=='B' || myData.keyPress=='C'))
+  if(robotMode==2) // Candle Mode
   {
-  transmitData = true;
-  }
+  if((myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+  || myData.keyPress=='M' || myData.keyPress=='A' || myData.keyPress=='B' || myData.keyPress=='C'))
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // turn on and off its candles (A,B,C) and play music (M)
-
-  if((robotMode==3) // Greeting Mode
-  &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
-  || myData.keyPress=='B'))
-  {
-  myData.greeting[0] = 101;
-  transmitData = true;
+    {
+      if(myData.keyPress=='A')
+      {
+        myData.candleA = !myData.candleA;
+      }
+      if(myData.keyPress=='B')
+      {
+        myData.candleB = !myData.candleB;
+      }
+      if(myData.keyPress=='C')
+      {
+        myData.candleC = !myData.candleC;
+      }
+    transmitData = true;
+    }
   }
+  
+  if(robotMode==3) // Greeting Mode
+  {
+  if((myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+  || myData.keyPress=='B'))
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // and play different greetings (B)
+    {
+      transmitData = true;
+    }
+  }
 
 
   //Dizziness
@@ -235,7 +258,7 @@ else    // To exit Config Mode, press and hold the S Key
     else                    // to the right
       dizzyCounterR = 0;    // If another key is pressed, the counter resets
 
-  // After the Robot has spin over this threshold...
+  // After the Robot has spun over this threshold...
   if((dizzyCounterL >= 5)||(dizzyCounterR >= 5))
   {
     myData.statusDizzy = true;  //... He becomes Dizzy
@@ -402,7 +425,7 @@ void sendData() {
     Serial.println(F("Response timed out -  no Acknowledge."));
     timeoutCounter++; //Increase the timeout error counter
     
-    if(timeoutCounter >= 4)
+    if(timeoutCounter >= 100)
     statusConnect = false;
     lcdRefresh = true;
   }
@@ -424,7 +447,6 @@ void sendData() {
     Serial.print(myData.keyPress);
     Serial.print(myData.keyState);
     Serial.print(" - ");
-    Serial.print(myData.greeting);
     Serial.print(F(", Got response "));
     Serial.print(myData.timeCounter);
     Serial.print(F(", Round-trip delay "));
