@@ -72,13 +72,48 @@ struct dataStruct {
   boolean candleC;        // Sets the status for the third Candle
 } myData;                 // Data stream that will be sent to the robot
 
+  //Sprite for the lit candle
+  byte candleOn[8] = {
+  0b00100,
+  0b01010,
+  0b01010,
+  0b10001,
+  0b10001,
+  0b10001,
+  0b01010,
+  0b00100
+  };
+
+  //Sprite for the unlit candle
+  byte candleOff[8] = {
+  0b00000,
+  0b00000,
+  0b00000,
+  0b00100,
+  0b00110,
+  0b00010,
+  0b00110,
+  0b00100
+  };
+
+  byte candleBody[8] = {
+  0b11111,
+  0b10001,
+  0b11101,
+  0b10101,
+  0b10011,
+  0b10001,
+  0b10001,
+  0b10001
+  };
+
 void setup() {
   Serial.begin(57600);
   // Set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   // Print the welcome message
   lcd.print("Pastelino");
-  lcd.setCursor(8,2);
+  lcd.setCursor(8,1);
   lcd.print("Ver. 0.9");
 
   robotMode = 1;
@@ -93,6 +128,10 @@ void setup() {
   myData.candleA = false; 
   myData.candleB = false;
   myData.candleC = false;
+
+  lcd.createChar(0, candleOff);
+  lcd.createChar(1, candleOn);
+  lcd.createChar(2, candleBody);
 
   printf_begin(); // Needed for "printDetails" Takes up some memory
 
@@ -221,14 +260,24 @@ else    // To exit Config Mode, press and hold the S Key
       if(myData.keyPress=='A')
       {
         myData.candleA = !myData.candleA;
+        myData.expression = 6;
+        screenDraw();
       }
       if(myData.keyPress=='B')
       {
         myData.candleB = !myData.candleB;
+        myData.expression = 10;
+        screenDraw();
       }
       if(myData.keyPress=='C')
       {
         myData.candleC = !myData.candleC;
+        myData.expression = 7;
+        screenDraw();
+      }
+      if(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R')
+      {
+        myData.expression = 0;
       }
     transmitData = true;
     }
@@ -318,63 +367,91 @@ void screenDraw() {
     lcd.print("*Set Expression*");
     if(expressionIndex==1)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[^_^]");
     }
     if(expressionIndex==2)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[O_O]");
     }
     if(expressionIndex==3)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[ <3 ]");
     }
     if(expressionIndex==4)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[@_@]");
     }
     if(expressionIndex==5)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[0v0]");
     }
     if(expressionIndex==6)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[- 0]");
     }
     if(expressionIndex==7)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[0 -]");
     }
     if(expressionIndex==8)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[U_U]");
     }
     if(expressionIndex==9)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[>.<]");
     }
     if(expressionIndex==10)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[Yes]");
     }
     if(expressionIndex==11)
     {
-    lcd.setCursor(5,2);
+    lcd.setCursor(5,1);
     lcd.print("[No-]");
     }
   }
   if(robotMode==2)
   {
-    lcd.print("Candle Mode");
+    lcd.setCursor(1,0);
+    if(myData.candleA==true)
+    lcd.write(byte(1));
+    else
+    lcd.write(byte(0));
+
+    lcd.setCursor(8,0);
+    if(myData.candleB==true)
+    lcd.write(byte(1));
+    else
+    lcd.write(byte(0));
+
+     lcd.setCursor(15,0);
+    if(myData.candleC==true)
+    lcd.write(byte(1));
+    else
+    lcd.write(byte(0));
+    
+    lcd.setCursor(0,1);
+    lcd.print("a");
+    lcd.write(byte(2));
+
+    lcd.setCursor(7,1);
+    lcd.print("b");
+    lcd.write(byte(2));
+
+    lcd.setCursor(14,1);
+    lcd.print("c");
+    lcd.write(byte(2));
   }
   if(robotMode==3)
   {
