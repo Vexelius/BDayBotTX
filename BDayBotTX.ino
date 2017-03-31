@@ -1,9 +1,19 @@
+//  **=============================================**
+//  ||                 PASTELINO                   ||
+//  ++---------------------------------------------++
+//  ||               Remote Control                ||
+//  ||                                             ||
+//  ||  Powered by:                                ||
+//  ||    -ICStation ATmega328 Pro Mini [5V,16Mhz] ||
+//  ||    -nRFL2401 module                         ||
+//  ||                                             ||
+//  **=============================================**
 
 #include <SPI.h>
-#include "RF24.h"
+#include "RF24.h" //Provided by TMRh20 : http://tmrh20.github.io/RF24
 #include <printf.h>
 #include <LiquidCrystal.h>
-#include <OnewireKeypad.h>
+#include <OnewireKeypad.h>  //By HazardsMind : http://playground.arduino.cc/Code/OneWireKeyPad
 
 // Keypad configuration
 #define Rows 2
@@ -43,13 +53,17 @@ int robotMode;  // Sets up the operation mode
 // 2: Candle Mode       5: Config Mode
 int dizzyCounterL;
 int dizzyCounterR;
+int timeoutCounter;
+
+boolean statusConnect;  // Checks the connection status between control and robot
 
 struct dataStruct {
   unsigned long timeCounter;  // Save response times
   char keyPress;          // When a key is pressed, this variable stores its unique code
-  int keyState;
+  int keyState;           // Stores the status of the pressed key
   boolean keypadLock;     // When this flag is active, no input will be received fron the keypad
   boolean configMode;     // This flag determines wheter the robot is in Config Mode or not
+  
   boolean statusDizzy;
 } myData;                 // Data stream that will be sent to the robot
 
@@ -58,17 +72,18 @@ void setup() {
   // Set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   // Print the welcome message
-  lcd.print("B-DayBot");
+  lcd.print("Pastelino");
   lcd.setCursor(8,2);
-  lcd.print("Ver. 0.2");
+  lcd.print("Ver. 0.9");
 
   robotMode = 1;
-  lcdRefresh = true;
   myData.configMode = false;
   myData.statusDizzy = false;
   Keypad.SetHoldTime(800);
   dizzyCounterL = 0;
   dizzyCounterR = 0;
+  timeoutCounter = 0;
+  statusConnect = true;
 
   printf_begin(); // Needed for "printDetails" Takes up some memory
 
@@ -76,7 +91,7 @@ void setup() {
   radio.setDataRate(RF24_250KBPS);  //Data rate is slow, but ensures accuracy
   radio.setPALevel(RF24_PA_HIGH);   //High PA Level, to give enough range
   radio.setCRCLength(RF24_CRC_16);  //CRC at 16 bits
-  radio.setRetries(15,15);          //Max number of retries
+  radio.setRetries(1,1);          //Max number of retries
   radio.setPayloadSize(8);          //Payload size of 8bits
 
   // Open a writing and reading pipe on each radio, with opposite addresses
@@ -85,6 +100,9 @@ void setup() {
 
   // Start listening for data
   radio.startListening();
+
+  delay(1000);
+  lcdRefresh = true;
 }
 
 void loop() {
@@ -151,6 +169,7 @@ else    // To exit Config Mode, press and hold the S Key
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='B'))
   transmitData = true;
+
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // change expressions (B) and play music (M)
 
@@ -161,7 +180,7 @@ else    // To exit Config Mode, press and hold the S Key
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // turn on and off its candles (A,B,C) and play music (M)
 
-  if((robotMode==3)
+  if((robotMode==3) // Greeting Mode
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='B'))
   transmitData = true;
@@ -204,10 +223,31 @@ else    // To exit Config Mode, press and hold the S Key
   }
   delay(200); // This allows for the key to debounce. Without it, there's a chance that a wrong keycode will be sent
   if(Keypad.Key_State()==2) // In the meantime, has the button been released?
-  {
-    myData.keyState=2;  // If so, update the keyState variable
-    sendData();         // and tell the robot about the change
-  }
+    {
+      if((robotMode==1) // Check if the button released is valid for Expression Mode
+      &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+      || myData.keyPress=='M' || myData.keyPress=='B'))
+      {
+        myData.keyState=2;  // If so, update the keyState variable
+        sendData();         // and tell the robot about the change
+      }
+
+      if((robotMode==2) // Check if the button released is valid for Candle Mode
+      &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+      || myData.keyPress=='M' || myData.keyPress=='A' || myData.keyPress=='B' || myData.keyPress=='C'))
+      {
+        myData.keyState=2;  // If so, update the keyState variable
+        sendData();         // and tell the robot about the change
+      }
+
+      if((robotMode==3) // Greeting Mode
+      &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+      || myData.keyPress=='B'))
+      {
+        myData.keyState=2;  // If so, update the keyState variable
+        sendData();         // and tell the robot about the change
+      }
+    }
   }
 }
 
@@ -230,6 +270,14 @@ void screenDraw() {
   if(robotMode==5)
   {
     lcd.print("Config Mode");
+  }
+
+  if(statusConnect==false)
+  {
+    lcd.clear();
+    lcd.print("No connection...");
+    lcd.setCursor(4,2);
+    lcd.print("[ U_U ]");
   }
   
   lcdRefresh = false;
@@ -262,9 +310,21 @@ void sendData() {
   if ( timeout )
   { // Describe the results
     Serial.println(F("Response timed out -  no Acknowledge."));
+    timeoutCounter++; //Increase the timeout error counter
+    
+    if(timeoutCounter >= 4)
+    statusConnect = false;
+    lcdRefresh = true;
   }
   else
   {
+    timeoutCounter=0; //Reset the timeout error counter
+    if(statusConnect==false)
+    {
+      statusConnect = true; //Connection successful
+      lcdRefresh = true;
+    }
+    
     // Grab the response, compare, and send to Serial Monitor
     radio.read( &myData, sizeof(myData) );
     timeNow = micros();
