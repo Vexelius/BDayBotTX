@@ -168,18 +168,37 @@ else    // To exit Config Mode, press and hold the S Key
   // The following instructions ensure that the proper commands are sent
   // when the Robot is in a specific Operation Mode
   
-  if((robotMode==1) // Expression Mode
-  &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
+  if(robotMode==1) // Expression Mode
+  {                   //The valid keys to start transmission in this mode are:
+  if((myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='B'))
-  {
-    myData.keypadLock = !myData.keypadLock;
-    myData.expression = 7;
+    {
+      if(myData.keyPress=='B')
+      {
+      myData.expression = expressionIndex;
+      }
+      else
+      {
+      myData.expression = 0;
+      }
     transmitData = true;
-    Serial.print("String size: ");
-    Serial.println(sizeof(myData.greeting));
-    Serial.print("Stream size: ");
-    Serial.println(sizeof(myData));
+    }
+  if(myData.keyPress=='A')
+    {
+      expressionIndex -= 1;
+      if(expressionIndex<1) expressionIndex = 11;
+      screenDraw();  //Refresh the LCD screen's content
+      delay(200);
+    }
+  if(myData.keyPress=='C')
+    {
+      expressionIndex += 1;
+      if(expressionIndex>11) expressionIndex = 1;
+      screenDraw();  //Refresh the LCD screen's content
+      delay(100); 
+    }
   }
+  
 
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // change expressions (B) and play music (M)
@@ -187,7 +206,9 @@ else    // To exit Config Mode, press and hold the S Key
   if((robotMode==2) // Candle Mode
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='A' || myData.keyPress=='B' || myData.keyPress=='C'))
+  {
   transmitData = true;
+  }
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // turn on and off its candles (A,B,C) and play music (M)
 
@@ -195,7 +216,7 @@ else    // To exit Config Mode, press and hold the S Key
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='B'))
   {
-  myData.greeting[0] = 'E';
+  myData.greeting[0] = 101;
   transmitData = true;
   }
   // In this mode, the Robot can move in all directions (U,D,L,R)
@@ -274,8 +295,58 @@ void screenDraw() {
     lcd.print("*Set Expression*");
     if(expressionIndex==1)
     {
-    lcd.setCursor(4,2);
-    lcd.print("[Laugh]");
+    lcd.setCursor(5,2);
+    lcd.print("[^_^]");
+    }
+    if(expressionIndex==2)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[O_O]");
+    }
+    if(expressionIndex==3)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[ <3 ]");
+    }
+    if(expressionIndex==4)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[@_@]");
+    }
+    if(expressionIndex==5)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[0v0]");
+    }
+    if(expressionIndex==6)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[- 0]");
+    }
+    if(expressionIndex==7)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[0 -]");
+    }
+    if(expressionIndex==8)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[U_U]");
+    }
+    if(expressionIndex==9)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[>.<]");
+    }
+    if(expressionIndex==10)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[Yes]");
+    }
+    if(expressionIndex==11)
+    {
+    lcd.setCursor(5,2);
+    lcd.print("[No-]");
     }
   }
   if(robotMode==2)
