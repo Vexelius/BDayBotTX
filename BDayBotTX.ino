@@ -227,7 +227,7 @@ else    // To exit Config Mode, press and hold the S Key
       }
       else
       {
-      myData.expression = 0;
+      myData.expression = 0;  // Return to the default expression: Blink
       }
     transmitData = true;
     }
@@ -277,7 +277,7 @@ else    // To exit Config Mode, press and hold the S Key
       }
       if(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R')
       {
-        myData.expression = 0;
+        myData.expression = 0;  // Return to the default expression: Blink
       }
     transmitData = true;
     }
