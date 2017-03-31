@@ -55,6 +55,8 @@ int dizzyCounterL;
 int dizzyCounterR;
 int timeoutCounter;
 
+int expressionIndex = 1;  //This variable will aid to display the list of available expressions
+
 boolean statusConnect;  // Checks the connection status between control and robot
 
 struct dataStruct {
@@ -63,8 +65,9 @@ struct dataStruct {
   int keyState;           // Stores the status of the pressed key
   boolean keypadLock;     // When this flag is active, no input will be received fron the keypad
   boolean configMode;     // This flag determines wheter the robot is in Config Mode or not
-  
   boolean statusDizzy;
+  int expression;         // Used to change the robot's expressions
+  char greeting[35] = "Arduino";        // 
 } myData;                 // Data stream that will be sent to the robot
 
 void setup() {
@@ -91,8 +94,8 @@ void setup() {
   radio.setDataRate(RF24_250KBPS);  //Data rate is slow, but ensures accuracy
   radio.setPALevel(RF24_PA_HIGH);   //High PA Level, to give enough range
   radio.setCRCLength(RF24_CRC_16);  //CRC at 16 bits
-  radio.setRetries(1,1);          //Max number of retries
-  radio.setPayloadSize(8);          //Payload size of 8bits
+  radio.setRetries(15,1);          //Max number of retries
+  radio.setPayloadSize(32);          //Payload size of 32bits
 
   // Open a writing and reading pipe on each radio, with opposite addresses
   radio.openWritingPipe(addresses[0]);
@@ -168,7 +171,15 @@ else    // To exit Config Mode, press and hold the S Key
   if((robotMode==1) // Expression Mode
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='B'))
-  transmitData = true;
+  {
+    myData.keypadLock = !myData.keypadLock;
+    myData.expression = 7;
+    transmitData = true;
+    Serial.print("String size: ");
+    Serial.println(sizeof(myData.greeting));
+    Serial.print("Stream size: ");
+    Serial.println(sizeof(myData));
+  }
 
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // change expressions (B) and play music (M)
@@ -183,7 +194,10 @@ else    // To exit Config Mode, press and hold the S Key
   if((robotMode==3) // Greeting Mode
   &&(myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='B'))
+  {
+  myData.greeting[0] = 'E';
   transmitData = true;
+  }
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // and play different greetings (B)
 
@@ -257,7 +271,12 @@ void screenDraw() {
 
   if(robotMode==1)
   {
-    lcd.print("Expression Mode");
+    lcd.print("*Set Expression*");
+    if(expressionIndex==1)
+    {
+    lcd.setCursor(4,2);
+    lcd.print("[Laugh]");
+    }
   }
   if(robotMode==2)
   {
@@ -333,6 +352,8 @@ void sendData() {
     Serial.print(F("Sent "));
     Serial.print(myData.keyPress);
     Serial.print(myData.keyState);
+    Serial.print(" - ");
+    Serial.print(myData.greeting);
     Serial.print(F(", Got response "));
     Serial.print(myData.timeCounter);
     Serial.print(F(", Round-trip delay "));
