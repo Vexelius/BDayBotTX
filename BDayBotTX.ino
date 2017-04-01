@@ -70,6 +70,8 @@ struct dataStruct {
   boolean candleA;        // Sets the status for the first Candle
   boolean candleB;        // Sets the status for the second Candle
   boolean candleC;        // Sets the status for the third Candle
+  int greetingStatus;     // This flag shows the status for the greeting | 0 = Inactive | 1 = Sent | 2 = Displayed
+  char greeting1[10]="Arduino!";     // The first message
 } myData;                 // Data stream that will be sent to the robot
 
   //Sprite for the lit candle
@@ -132,6 +134,8 @@ void setup() {
   lcd.createChar(0, candleOff);
   lcd.createChar(1, candleOn);
   lcd.createChar(2, candleBody);
+
+  myData.greetingStatus = 0;
 
   printf_begin(); // Needed for "printDetails" Takes up some memory
 
@@ -215,7 +219,8 @@ else    // To exit Config Mode, press and hold the S Key
   // when the Robot is in a specific Operation Mode
   
   if(robotMode==1) // Expression Mode
-  {                   //The valid keys to start transmission in this mode are:
+  {                  
+  myData.greetingStatus = 0;
   if((myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='B'))
   // In this mode, the Robot can move in all directions (U,D,L,R)
@@ -252,6 +257,7 @@ else    // To exit Config Mode, press and hold the S Key
 
   if(robotMode==2) // Candle Mode
   {
+  myData.greetingStatus = 0;
   if((myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='M' || myData.keyPress=='A' || myData.keyPress=='B' || myData.keyPress=='C'))
   // In this mode, the Robot can move in all directions (U,D,L,R)
@@ -285,12 +291,22 @@ else    // To exit Config Mode, press and hold the S Key
   
   if(robotMode==3) // Greeting Mode
   {
+  myData.expression = 0;
   if((myData.keyPress=='U' || myData.keyPress=='D' || myData.keyPress=='L' || myData.keyPress=='R' 
   || myData.keyPress=='B'))
   // In this mode, the Robot can move in all directions (U,D,L,R)
   // and play different greetings (B)
     {
-      transmitData = true;
+      if(myData.keyPress=='B')
+      {
+        myData.greetingStatus = 1;
+        transmitData = true;
+      }
+      else
+      {
+        myData.greetingStatus = 0;
+        transmitData = true;
+      }
     }
   }
 
